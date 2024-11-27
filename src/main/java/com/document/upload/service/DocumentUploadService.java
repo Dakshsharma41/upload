@@ -1,19 +1,24 @@
 package com.document.upload.service;
 
+import com.document.upload.dto.FileResponse;
 import com.document.upload.entity.FileEntity;
 import com.document.upload.repository.DocumentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -60,5 +65,27 @@ public class DocumentUploadService {
         } finally {
 
         }
+    }
+
+    public ResponseEntity<List<FileResponse>> getAllFiles() throws FileNotFoundException {
+        List<FileEntity> fileList = documentRepository.findAll();
+        if (fileList.isEmpty()) {
+            throw new FileNotFoundException("No files found!");
+        }
+        List<FileResponse> fileResponses = new ArrayList<>();
+        for (FileEntity fileEntity : fileList) {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(fileEntity.getFileContent());
+            InputStreamResource resource = new InputStreamResource(byteArrayInputStream);
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileEntity.getFileName());
+            headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE);
+            headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(fileEntity.getFileContent().length));
+            FileResponse fileDownloadResponse = new FileResponse();
+            fileDownloadResponse.setFileName(fileEntity.getFileName());
+            fileDownloadResponse.setFileSize(fileEntity.getFileContent().length);
+            fileDownloadResponse.setDownloadUrl("/files/download/" + fileEntity.getUuid());
+            fileResponses.add(fileDownloadResponse);
+        }
+        return ResponseEntity.ok(fileResponses);
     }
 }
