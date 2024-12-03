@@ -3,6 +3,9 @@ package com.document.upload.service;
 import com.document.upload.dto.FileResponse;
 import com.document.upload.entity.FileEntity;
 import com.document.upload.repository.DocumentRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
@@ -15,9 +18,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +30,7 @@ public class DocumentUploadService {
     DocumentRepository documentRepository;
     @Value("${upload.directory}")
     private String uploadDir;
+    private String SECRET_KEY="fcPpoU0eCD5W4BD7ZFnBh0Xx53EbY3Bsz1Lu3ARtAq4";
 
     public ResponseEntity<String> upload(MultipartFile document) {
         try {
@@ -39,20 +43,16 @@ public class DocumentUploadService {
             fileEntity.setFileId(fileId);
             fileEntity.setFileName(document.getOriginalFilename());
             File destinationFile = null;
-
-
             try {
                 File directory = new File(uploadDir);
                 if (!directory.exists()) {
                     directory.mkdirs();
                 }
-
-
                 String filePath = uploadDir + File.separator + document.getOriginalFilename();
                 destinationFile = new File(filePath);
-
-
                 document.transferTo(destinationFile);
+
+
                 byte[] fileContent = Files.readAllBytes(Paths.get(destinationFile.getAbsolutePath()));
                 fileEntity.setFileContent(fileContent);
                 documentRepository.save(fileEntity);
@@ -72,6 +72,8 @@ public class DocumentUploadService {
         if (fileList.isEmpty()) {
             throw new FileNotFoundException("No files found!");
         }
+
+
         List<FileResponse> fileResponses = new ArrayList<>();
         for (FileEntity fileEntity : fileList) {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(fileEntity.getFileContent());
@@ -83,9 +85,48 @@ public class DocumentUploadService {
             FileResponse fileDownloadResponse = new FileResponse();
             fileDownloadResponse.setFileName(fileEntity.getFileName());
             fileDownloadResponse.setFileSize(fileEntity.getFileContent().length);
-            fileDownloadResponse.setDownloadUrl("/files/download/" + fileEntity.getUuid());
+            fileDownloadResponse.setFileId(fileEntity.getFileId());
             fileResponses.add(fileDownloadResponse);
         }
         return ResponseEntity.ok(fileResponses);
+    }
+    public String generateSharableLink(String fileId) {
+        FileEntity fileEntity = documentRepository.findByFileId(fileId);
+        if (fileEntity == null) {
+            throw new IllegalArgumentException("Document not found");
+        }
+
+        long expirationTimeMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000);
+//        long expirationTimeMillis = System.currentTimeMillis() + (10000);
+
+        String token = Jwts.builder()
+                .setSubject(fileId.toString())
+                .setExpiration(new Date(expirationTimeMillis))
+                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .compact();
+
+        String sharableUrl = "http://localhost:8080/file/secure?token=" + token;
+
+        return sharableUrl;
+    }
+    public FileEntity getDocumentFromLink(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(SECRET_KEY)
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            String fileIdString = claims.getSubject();
+
+
+            FileEntity document = documentRepository.findByFileId(fileIdString);
+            if (document == null) {
+                throw new IllegalArgumentException("Document not found");
+            }
+
+            return document;
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid or expired token", e);
+        }
     }
 }
