@@ -11,4 +11,5 @@ public class FileResponse {
     private String fileName ;
     private String filesize ;
     private String fileId;
+    private  String passCode;
 }

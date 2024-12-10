@@ -22,6 +22,7 @@ public class FileEntity {
     private String fileName;
 
 
+
     @Column
     @JdbcTypeCode(Types.VARBINARY)
     private byte[] fileContent;

@@ -3,6 +3,7 @@ package com.document.upload.service;
 import com.document.upload.dto.FileResponse;
 import com.document.upload.entity.FileEntity;
 import com.document.upload.repository.DocumentRepository;
+import com.document.upload.util.EmailService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -14,11 +15,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -28,9 +32,14 @@ import java.util.UUID;
 public class DocumentUploadService {
     @Autowired
     DocumentRepository documentRepository;
+
     @Value("${upload.directory}")
     private String uploadDir;
-    private String SECRET_KEY="fcPpoU0eCD5W4BD7ZFnBh0Xx53EbY3Bsz1Lu3ARtAq4";
+
+    @Autowired
+    EmailService emailService;
+
+    private String SECRET_KEY = "9ogZjRn0rk1qQ8VMiidCCuztOSVjnIbRGfrxekvV3Ls";
 
     public ResponseEntity<String> upload(MultipartFile document) {
         try {
@@ -42,6 +51,11 @@ public class DocumentUploadService {
             String fileId = UUID.randomUUID().toString();
             fileEntity.setFileId(fileId);
             fileEntity.setFileName(document.getOriginalFilename());
+
+            String passcode = RandomStringUtils.randomAlphanumeric(8);
+
+
+
             File destinationFile = null;
             try {
                 File directory = new File(uploadDir);
@@ -90,15 +104,38 @@ public class DocumentUploadService {
         }
         return ResponseEntity.ok(fileResponses);
     }
-    public String generateSharableLink(String fileId) {
+
+    public String generateAndShareLink(String fileId, String expiryIn, List<String> emails, String passcode) {
+
+        String shareableLink = generateSharableLink(fileId, expiryIn);
+        String subject = "URL for the document";
+
+        emailService.sendEmailToUsers(emails, subject, shareableLink);
+        return "Shareable URL Generated and Emails Sent Successfully!!!";
+    }
+
+
+    public String generateSharableLink(String fileId, String expiresIn) {
         FileEntity fileEntity = documentRepository.findByFileId(fileId);
         if (fileEntity == null) {
             throw new IllegalArgumentException("Document not found");
         }
+        long expirationTimeMillis;
 
-        long expirationTimeMillis = System.currentTimeMillis() + (24 * 60 * 60 * 1000);
-//        long expirationTimeMillis = System.currentTimeMillis() + (10000);
+        if (expiresIn == null) {
+            expirationTimeMillis = System.currentTimeMillis() + (10000);
+        } else {
 
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
+            Date expirationDate;
+            try {
+                expirationDate = dateFormat.parse(expiresIn);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Invalid expiration date format. Expected dd-MM-yyyy", e);
+            }
+
+            expirationTimeMillis = expirationDate.getTime();
+        }
         String token = Jwts.builder()
                 .setSubject(fileId.toString())
                 .setExpiration(new Date(expirationTimeMillis))
@@ -109,6 +146,7 @@ public class DocumentUploadService {
 
         return sharableUrl;
     }
+
     public FileEntity getDocumentFromLink(String token) {
         try {
             Claims claims = Jwts.parser()
@@ -129,4 +167,5 @@ public class DocumentUploadService {
             throw new RuntimeException("Invalid or expired token", e);
         }
     }
+
 }
