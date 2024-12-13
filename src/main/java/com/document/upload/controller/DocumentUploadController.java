@@ -46,7 +46,7 @@ public class DocumentUploadController {
     }
 
     @CrossOrigin(origins = "http://localhost:4200")
-    @GetMapping(value = UrlConstants.GENERATE_AND_SHARE)
+    @PostMapping(value = UrlConstants.GENERATE_AND_SHARE)
     public ResponseEntity<String> generateAndShareLink(@RequestParam String fileId,@RequestParam String expiryIn,@RequestParam List<String> emails,@RequestParam String passcode) {
         try {
             String response = documentUploadService.generateAndShareLink(fileId,expiryIn,emails,passcode);
@@ -57,7 +57,7 @@ public class DocumentUploadController {
     }
 
 
-
+    
     @GetMapping("/secure")
     public ResponseEntity<byte[]> getDocument(@RequestParam String token) {
         try {

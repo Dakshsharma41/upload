@@ -2,7 +2,9 @@ package com.document.upload.service;
 
 import com.document.upload.dto.FileResponse;
 import com.document.upload.entity.FileEntity;
+import com.document.upload.entity.ShareTransactionEntity;
 import com.document.upload.repository.DocumentRepository;
+import com.document.upload.repository.ShareTransactionRepository;
 import com.document.upload.util.EmailService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -23,15 +25,15 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class DocumentUploadService {
     @Autowired
     DocumentRepository documentRepository;
+
+    @Autowired
+    ShareTransactionRepository shareTransactionRepository;
 
     @Value("${upload.directory}")
     private String uploadDir;
@@ -52,7 +54,6 @@ public class DocumentUploadService {
             fileEntity.setFileId(fileId);
             fileEntity.setFileName(document.getOriginalFilename());
 
-            String passcode = RandomStringUtils.randomAlphanumeric(8);
 
 
 
@@ -109,8 +110,14 @@ public class DocumentUploadService {
 
         String shareableLink = generateSharableLink(fileId, expiryIn);
         String subject = "URL for the document";
-
         emailService.sendEmailToUsers(emails, subject, shareableLink);
+        ShareTransactionEntity shareTransactionEntity=new ShareTransactionEntity();
+        shareTransactionEntity.setFileId(fileId);
+        shareTransactionEntity.setExpiryIn(expiryIn);
+        String result = String.join(",", emails);
+        shareTransactionEntity.setEmails(result);
+        shareTransactionEntity.setShareableUrl(shareableLink);
+        shareTransactionRepository.save(shareTransactionEntity);
         return "Shareable URL Generated and Emails Sent Successfully!!!";
     }
 
