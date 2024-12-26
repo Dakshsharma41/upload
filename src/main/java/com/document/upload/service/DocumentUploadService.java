@@ -1,6 +1,7 @@
 package com.document.upload.service;
 
 import com.document.upload.dto.FileResponse;
+import com.document.upload.dto.UploadTxnResponse;
 import com.document.upload.entity.FileEntity;
 import com.document.upload.entity.ShareTransactionEntity;
 import com.document.upload.repository.DocumentRepository;
@@ -25,6 +26,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 
 @Service
@@ -43,7 +46,7 @@ public class DocumentUploadService {
 
     private String SECRET_KEY = "9ogZjRn0rk1qQ8VMiidCCuztOSVjnIbRGfrxekvV3Ls";
 
-    public ResponseEntity<String> upload(MultipartFile document) {
+    public ResponseEntity<String> upload(MultipartFile document, String uploadedBy, String description) {
         try {
 
 //            byte[] bytes = document.getBytes();
@@ -53,8 +56,9 @@ public class DocumentUploadService {
             String fileId = UUID.randomUUID().toString();
             fileEntity.setFileId(fileId);
             fileEntity.setFileName(document.getOriginalFilename());
-
-
+            fileEntity.setCreatedAt(Date.from(Instant.now()));
+            fileEntity.setUploadedBy(uploadedBy);
+            fileEntity.setDescription(description);
 
 
             File destinationFile = null;
@@ -101,24 +105,28 @@ public class DocumentUploadService {
             fileDownloadResponse.setFileName(fileEntity.getFileName());
             fileDownloadResponse.setFileSize(fileEntity.getFileContent().length);
             fileDownloadResponse.setFileId(fileEntity.getFileId());
+            fileDownloadResponse.setDescription(fileEntity.getDescription());
+            fileDownloadResponse.setUploadedAt(fileEntity.getCreatedAt());
+            fileDownloadResponse.setUploadedBy(fileEntity.getUploadedBy());
             fileResponses.add(fileDownloadResponse);
         }
         return ResponseEntity.ok(fileResponses);
     }
 
-    public String generateAndShareLink(String fileId, String expiryIn, List<String> emails, String passcode) {
+    public ShareTransactionEntity generateAndShareLink(String fileId, String expiryIn, List<String> emails, String passcode) {
 
         String shareableLink = generateSharableLink(fileId, expiryIn);
         String subject = "URL for the document";
         emailService.sendEmailToUsers(emails, subject, shareableLink);
-        ShareTransactionEntity shareTransactionEntity=new ShareTransactionEntity();
+        ShareTransactionEntity shareTransactionEntity = new ShareTransactionEntity();
         shareTransactionEntity.setFileId(fileId);
         shareTransactionEntity.setExpiryIn(expiryIn);
         String result = String.join(",", emails);
         shareTransactionEntity.setEmails(result);
         shareTransactionEntity.setShareableUrl(shareableLink);
+        shareTransactionEntity.setPasscode(passcode);
         shareTransactionRepository.save(shareTransactionEntity);
-        return "Shareable URL Generated and Emails Sent Successfully!!!";
+        return shareTransactionEntity;
     }
 
 
@@ -130,7 +138,7 @@ public class DocumentUploadService {
         long expirationTimeMillis;
 
         if (expiresIn == null) {
-            expirationTimeMillis = System.currentTimeMillis() + (10000);
+            expirationTimeMillis = System.currentTimeMillis() + (60000);
         } else {
 
             SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
@@ -174,5 +182,32 @@ public class DocumentUploadService {
             throw new RuntimeException("Invalid or expired token", e);
         }
     }
+
+
+    public ResponseEntity<List<UploadTxnResponse>> getUploadTxn() throws Exception {
+        List<ShareTransactionEntity> uploadTxnList = shareTransactionRepository.findAll();
+        if (uploadTxnList.isEmpty()) {
+            throw new Exception("No upload transaction found!!");
+        }
+
+
+        List<UploadTxnResponse> uploadTxnResponseList = new ArrayList<>();
+        for (ShareTransactionEntity shareTransactionEntity : uploadTxnList) {
+
+
+            UploadTxnResponse uploadTxnResponse = new UploadTxnResponse();
+            uploadTxnResponse.setUrl(shareTransactionEntity.getShareableUrl());
+            uploadTxnResponse.setRecipients(shareTransactionEntity.getEmails());
+            uploadTxnResponse.setPasscode(shareTransactionEntity.getPasscode());
+            uploadTxnResponse.setExpiryIn(shareTransactionEntity.getExpiryIn());
+
+            FileEntity fileEntity = documentRepository.findByFileId(shareTransactionEntity.getFileId());
+            String fileName = fileEntity.getFileName();
+            uploadTxnResponse.setFileName(fileName);
+            uploadTxnResponseList.add(uploadTxnResponse);
+        }
+        return ResponseEntity.ok(uploadTxnResponseList);
+    }
+
 
 }

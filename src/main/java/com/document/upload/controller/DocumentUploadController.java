@@ -1,7 +1,10 @@
 package com.document.upload.controller;
 
 import com.document.upload.dto.FileResponse;
+import com.document.upload.dto.GenerateLinkRequest;
+import com.document.upload.dto.UploadTxnResponse;
 import com.document.upload.entity.FileEntity;
+import com.document.upload.entity.ShareTransactionEntity;
 import com.document.upload.service.DocumentUploadService;
 import com.document.upload.util.UrlConstants;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.FileNotFoundException;
 import java.util.List;
+import java.util.Map;
 
 
 @RestController
@@ -21,9 +25,9 @@ public class DocumentUploadController {
 
     @CrossOrigin(origins = "http://localhost:4200")
     @PostMapping(value = UrlConstants.UPLOAD)
-    ResponseEntity<String> uploadDocument(@RequestParam("document") MultipartFile document) {
+    ResponseEntity<String> uploadDocument(@RequestParam("document") MultipartFile document,@RequestParam("uploadedBy") String uploadedBy,@RequestParam("description") String description) {
         System.out.println("upload document controller invoked");
-        return documentUploadService.upload(document);
+        return documentUploadService.upload(document,uploadedBy,description);
 
     }
 
@@ -36,8 +40,9 @@ public class DocumentUploadController {
 
     @CrossOrigin(origins = "http://localhost:4200")
     @GetMapping("/generate-link")
-    public ResponseEntity<String> generateSharableLink(@RequestParam String fileId) {
+    public ResponseEntity<String> generateSharableLink(@RequestBody Map<String, String> request) {
         try {
+            String fileId = request.get("fileId");
             String sharableUrl = documentUploadService.generateSharableLink(fileId,null);
             return new ResponseEntity<>(sharableUrl, HttpStatus.OK);
         } catch (Exception e) {
@@ -47,12 +52,17 @@ public class DocumentUploadController {
 
     @CrossOrigin(origins = "http://localhost:4200")
     @PostMapping(value = UrlConstants.GENERATE_AND_SHARE)
-    public ResponseEntity<String> generateAndShareLink(@RequestParam String fileId,@RequestParam String expiryIn,@RequestParam List<String> emails,@RequestParam String passcode) {
+    public ResponseEntity<ShareTransactionEntity> generateAndShareLink(@RequestBody GenerateLinkRequest request) {
         try {
-            String response = documentUploadService.generateAndShareLink(fileId,expiryIn,emails,passcode);
+            ShareTransactionEntity response = documentUploadService.generateAndShareLink(
+                    request.getFileId(),
+                    request.getExpiryIn(),
+                    request.getEmails(),
+                    request.getPasscode()
+            );
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>("Error generating link and failed to trigger emails: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -75,9 +85,28 @@ public class DocumentUploadController {
                     .headers(headers)
                     .body(document.getFileContent());
         } catch (Exception e) {
+            System.out.println(e);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
         }
     }
+    @CrossOrigin(origins = "http://localhost:4200")
+    @GetMapping(value = UrlConstants.UPLOAD_TXN)
+    public ResponseEntity<List<UploadTxnResponse>> getAllUploadTxn() throws Exception {
+        System.out.println("get txn upload service invoked");
+        return documentUploadService.getUploadTxn();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     private String determineMimeType(String fileName) {
