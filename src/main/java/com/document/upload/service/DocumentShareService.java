@@ -12,13 +12,18 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class DocumentShareService {
@@ -34,24 +39,41 @@ public class DocumentShareService {
     @Autowired
     EmailService emailService;
 
+    @Value("classpath:templates/mailTemplate.html")
+    private Resource emailTemplate;
+
     private String SECRET_KEY = "9ogZjRn0rk1qQ8VMiidCCuztOSVjnIbRGfrxekvV3Ls";
 
     public ShareTransactionEntity generateAndShareLink(String fileId, String expiryIn, List<String> emails, String passcode) {
+        try {
+            String shareableLink = generateSharableLink(fileId, expiryIn);
+            String subject = "URL for the document";
+            String htmlContent = loadTemplate().replace("{{link}}", shareableLink);
+            emailService.sendEmailToUsers(emails, subject, htmlContent);
+            ShareTransactionEntity shareTransactionEntity = new ShareTransactionEntity();
+            shareTransactionEntity.setFileId(fileId);
+            shareTransactionEntity.setExpiryIn(expiryIn);
+            String result = String.join(",", emails);
+            shareTransactionEntity.setEmails(result);
+            shareTransactionEntity.setShareableUrl(shareableLink);
+            shareTransactionEntity.setPasscode(passcode);
+            shareTransactionRepository.save(shareTransactionEntity);
+            return shareTransactionEntity;
+        }catch (Exception e){
+            e.printStackTrace();
+            return  null;
+        }
 
-        String shareableLink = generateSharableLink(fileId, expiryIn);
-        String subject = "URL for the document";
-        emailService.sendEmailToUsers(emails, subject, shareableLink);
-        ShareTransactionEntity shareTransactionEntity = new ShareTransactionEntity();
-        shareTransactionEntity.setFileId(fileId);
-        shareTransactionEntity.setExpiryIn(expiryIn);
-        String result = String.join(",", emails);
-        shareTransactionEntity.setEmails(result);
-        shareTransactionEntity.setShareableUrl(shareableLink);
-        shareTransactionEntity.setPasscode(passcode);
-        shareTransactionRepository.save(shareTransactionEntity);
-        return shareTransactionEntity;
     }
 
+    private String loadTemplate() {
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(emailTemplate.getInputStream(), StandardCharsets.UTF_8))) {
+            return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load email template", e);
+        }
+    }
 
     public String generateSharableLink(String fileId, String expiresIn) {
         FileEntity fileEntity = documentRepository.findByFileId(fileId);

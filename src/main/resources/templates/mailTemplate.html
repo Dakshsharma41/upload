@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; line-height: 1.5; }
+        .container {
+            width: 50vw;
+            margin: auto;
+            padding: 5vh;
+            border: 0.5vh solid #ccc;
+            border-radius: 1vh;
+            background-color: #f9f9f9;
+        }
+        .header {
+            text-align: center;
+            padding: 1vh;
+            border-bottom: 0.2vh solid #ccc;
+        }
+        .content {
+            margin: 2vh 0;
+        }
+        .content p {
+            margin: 1vh 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 3vh;
+        }
+        table, th, td {
+            border: 0.2vh solid #ddd;
+        }
+        th, td {
+            padding: 2vh;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .footer {
+            font-size: 1.5vh;
+            color: #666;
+            margin-top: 3vh;
+        }
+    </style>
+</head>
+<body>
+<div class='container'>
+    <div class='header'>
+        <h3>Sharable Document Link</h3>
+    </div>
+    <div class='content'>
+        <p>Hello,</p>
+        <p>Please find your attached link below</p>
+        <p>Link: <a href="{{link}}">{{link}}</a></p>
+        <div class='footer'>
+            <p>Note: this is a system auto-generated mail.</p>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
