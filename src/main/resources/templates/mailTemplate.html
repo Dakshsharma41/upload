@@ -6,7 +6,7 @@
         .container {
             width: 50vw;
             margin: auto;
-            padding: 5vh;
+            padding: 0 5vh 5vh 5vh;
             border: 0.5vh solid #ccc;
             border-radius: 1vh;
             background-color: #f9f9f9;
@@ -20,7 +20,7 @@
             margin: 2vh 0;
         }
         .content p {
-            margin: 1vh 0;
+            margin: 5vh 0;
         }
         table {
             width: 100%;
@@ -37,7 +37,40 @@
         th {
             background-color: #f2f2f2;
         }
+        .cta {
+           text-align: center;
+           margin-top: 20px;
+        }
+        .cta p {
+           display: inline-block;
+           margin-right: 10px;
+        }
+        .cta a {
+           display: inline-block;
+           margin: 0 5px;
+           text-decoration: none;
+           padding: 10px 20px;
+           border-radius: 5px;
+        }
+        .cta a.yes {
+          background-color: #28a745;
+          color: #fff;
+        }
+        .folder-container{
+           display: flex;
+           align-items: center;
+           flex-direction: column;
+        }
+        .img-folder{
+           padding-top:2vh;
+           height:5vh;
+           width:5vh;
+        }
 
+
+        .document-name{
+            margin-bottom:2vh;
+        }
         .footer {
             font-size: 1.5vh;
             color: #666;
@@ -46,19 +79,24 @@
     </style>
 </head>
 <body>
-<div class='container'>
-    <div class='header'>
+<div class="container">
+    <div class="header">
         <h3>Sharable Document Link</h3>
     </div>
-    <div class='content'>
-        <p>Hello,</p>
-        <p>Please find your attached link below</p>
-        <p>Link: <a href="{{link}}">{{link}}</a></p>
-        <div class='footer'>
+    <div class="content">
+
+        <p>Here's the document that is shared with you.</p>
+        <div class="folder-container">
+
+            <span class="document-name">📁{{documentName}}</span>
+        </div>
+        <div class="cta">
+            <a href="{{link}}" class="yes">Open</a>
+        </div>
+        <div class="footer">
             <p>Note: this is a system auto-generated mail.</p>
         </div>
     </div>
 </div>
 </body>
 </html>
-

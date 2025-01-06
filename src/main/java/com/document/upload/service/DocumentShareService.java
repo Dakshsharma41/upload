@@ -20,6 +20,9 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -43,13 +46,18 @@ public class DocumentShareService {
     private Resource emailTemplate;
 
     private String SECRET_KEY = "9ogZjRn0rk1qQ8VMiidCCuztOSVjnIbRGfrxekvV3Ls";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     public ShareTransactionEntity generateAndShareLink(String fileId, String expiryIn, List<String> emails, String passcode) {
         try {
             String shareableLink = generateSharableLink(fileId, expiryIn);
+            FileEntity fileEntity=documentRepository.findByFileId(fileId);
             String subject = "URL for the document";
-            String htmlContent = loadTemplate().replace("{{link}}", shareableLink);
+            String htmlContent = loadTemplate().replace("{{link}}", shareableLink).replace("{{documentName}}", fileEntity.getFileName());;
+
             emailService.sendEmailToUsers(emails, subject, htmlContent);
+
+
             ShareTransactionEntity shareTransactionEntity = new ShareTransactionEntity();
             shareTransactionEntity.setFileId(fileId);
             shareTransactionEntity.setExpiryIn(expiryIn);
@@ -85,16 +93,18 @@ public class DocumentShareService {
         if (expiresIn == null) {
             expirationTimeMillis = System.currentTimeMillis() + (60000);
         } else {
-
-            SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
-            Date expirationDate;
             try {
-                expirationDate = dateFormat.parse(expiresIn);
+                LocalDateTime expirationDateTime = LocalDateTime.parse(expiresIn, DATE_FORMATTER);
+                expirationTimeMillis = expirationDateTime
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+                        .toEpochMilli();
+
             } catch (Exception e) {
                 throw new IllegalArgumentException("Invalid expiration date format. Expected dd-MM-yyyy", e);
             }
 
-            expirationTimeMillis = expirationDate.getTime();
+
         }
         String token = Jwts.builder()
                 .setSubject(fileId.toString())
