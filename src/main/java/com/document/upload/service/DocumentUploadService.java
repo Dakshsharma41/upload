@@ -3,6 +3,7 @@ package com.document.upload.service;
 import com.document.upload.dto.FileResponse;
 import com.document.upload.entity.FileEntity;
 import com.document.upload.repository.DocumentRepository;
+import com.document.upload.util.FilterClass;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
@@ -24,11 +25,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
 
 @Service
 public class DocumentUploadService {
     @Autowired
     DocumentRepository documentRepository;
+    @Autowired
+    FilterClass filterClass;
 
     @Value("${upload.directory}")
     private String uploadDir;
@@ -73,6 +78,27 @@ public class DocumentUploadService {
 
         }
     }
+//    public ResponseEntity<List<FileResponse>> getAllFiles() throws FileNotFoundException {
+//        List<FileEntity> fileList = filterClass.findAllFiles();
+//
+//        if (fileList.isEmpty()) {
+//            throw new FileNotFoundException("No files found!");
+//        }
+//
+//        List<FileResponse> fileResponses = fileList.stream().map(fileEntity -> {
+//            FileResponse fileResponse = new FileResponse();
+//            fileResponse.setFileName(fileEntity.getFileName());
+//            fileResponse.setFileSize(fileEntity.getFileContent().length);
+//            fileResponse.setFileId(fileEntity.getFileId());
+//            fileResponse.setDescription(fileEntity.getDescription());
+//            fileResponse.setUploadedAt(fileEntity.getCreatedAt());
+//            fileResponse.setUploadedBy(fileEntity.getUploadedBy());
+//            return fileResponse;
+//        }).collect(Collectors.toList());
+//
+//        return ResponseEntity.ok(fileResponses);
+//    }
+
 
     public ResponseEntity<List<FileResponse>> getAllFiles() throws FileNotFoundException {
         List<FileEntity> fileList = documentRepository.findAll();
